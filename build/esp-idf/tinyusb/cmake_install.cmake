@@ -1,4 +1,4 @@
-# Install script for directory: D:/esp-idf/components/tinyusb
+# Install script for directory: E:/esp-idf/components/tinyusb
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

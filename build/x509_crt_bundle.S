@@ -1,4 +1,4 @@
-/* * Data converted from D:/esp-demo/udp_multicast/build/esp-idf/mbedtls/x509_crt_bundle
+/* * Data converted from E:/personal/qixiaochen/esp32/Esp32Display/build/esp-idf/mbedtls/x509_crt_bundle
  */
 .data
 .section .rodata.embedded

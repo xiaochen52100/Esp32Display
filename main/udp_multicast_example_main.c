@@ -55,6 +55,13 @@ static const char *V6TAG = "mcast-ipv6";
 #endif
 int sock;
 static void mcast_send_data(char *data);
+int btn_flag=0;
+int btn_flag2=0;
+int btn_state=0;
+
+double oldProgess=999;
+int oldLastTime=999;
+int sendData(const char *logName, const char *data);
 /********串口操作*************/
 static const int RX_BUF_SIZE = 1024;
 static const char END[] = {0xff, 0xff, 0xff};
@@ -101,7 +108,7 @@ int sendData(const char *logName, const char *data)
 {
     const int len = strlen(data);
     const int txBytes = uart_write_bytes(UART_NUM_1, data, len);
-    ESP_LOGI(logName, "Wrote %s", data);
+    //ESP_LOGI(logName, "Wrote %s", data);
     return txBytes;
 }
 static void rx_task(void *arg)
@@ -112,16 +119,48 @@ static void rx_task(void *arg)
     while (1)
     {
         const int rxBytes = uart_read_bytes(UART_NUM_1, data, RX_BUF_SIZE, 1000 / portTICK_RATE_MS);
-        if (rxBytes > 0)
+        if (rxBytes == 4)
         {
-            char send_test[5]={1};
-            data[rxBytes] = 0;
-            ESP_LOGI(RX_TASK_TAG, "Read %d bytes: '%s'", rxBytes, data);
-            int time = data[3] + (data[2] << 8) + (data[1] << 16) + (data[0] << 24);
-            ESP_LOG_BUFFER_HEXDUMP(RX_TASK_TAG, data, rxBytes, ESP_LOG_INFO);
-            ESP_LOGI(TAG, "time:%d\n", time);
-            memcpy(send_test+1,&time,sizeof(int));
-            mcast_send_data(send_test);
+            if (btn_flag==1)
+            {
+                ESP_LOGI(RX_TASK_TAG, "btn_flag\n");
+                btn_flag=0;
+                continue;
+            }
+            if (btn_state==1)//停止
+            {
+                char send_test[5]={1,0,0,0,0};
+                // data[rxBytes] = 0;
+                // ESP_LOGI(RX_TASK_TAG, "Read %d bytes: '%s'", rxBytes, data);
+                // int time = data[0] + (data[1] << 8) + (data[2] << 16) + (data[3] << 24);
+                // ESP_LOG_BUFFER_HEXDUMP(RX_TASK_TAG, data, rxBytes, ESP_LOG_INFO);
+                // ESP_LOGI(TAG, "time:%d\n", time);
+                // memcpy(send_test+1,&time,sizeof(int));
+                mcast_send_data(send_test);
+                btn_flag2=1;
+                btn_state=0;
+            }
+            else if(btn_state==0&&data[1]==0&&data[1]==0)//开始
+            {
+                char send_test[5]={1};
+                //data[rxBytes] = 0;
+                ESP_LOGI(RX_TASK_TAG, "Read %d bytes: '%d'", rxBytes, data[0]);
+                // int time = data[3] + (data[2] << 8) + (data[1] << 16) + (data[0] << 24);
+                // ESP_LOG_BUFFER_HEXDUMP(RX_TASK_TAG, data, rxBytes, ESP_LOG_INFO);
+                // ESP_LOGI(TAG, "time:%d\n", time);
+                
+                char tmp=data[0];
+                send_test[4]=tmp;
+                send_test[1]=0;
+                send_test[2]=0;
+                send_test[3]=0;
+                //ESP_LOGI(RX_TASK_TAG, "send_test[4] bytes: '%d'",send_test[4]);
+                //memcpy(send_test+1,&time,sizeof(int));
+                mcast_send_data(send_test);
+                btn_flag2=1;
+                btn_state=1;
+            }
+            
             // if(time>0)
             // {
             //     char send_data[5]={1};
@@ -463,7 +502,7 @@ static void mcast_send_data(char *data)
     inet_ntoa_r(((struct sockaddr_in *)res->ai_addr)->sin_addr, addrbuf, sizeof(addrbuf) - 1);
     
 
-    err = sendto(sock, data, strlen(data), 0, res->ai_addr, res->ai_addrlen);
+    err = sendto(sock, data, 5, 0, res->ai_addr, res->ai_addrlen);
     ESP_LOGI(TAG, "Sending to IPV4 multicast address %s:%d...%s\n", addrbuf, UDP_PORT,data);
     freeaddrinfo(res);
     if (err < 0)
@@ -581,27 +620,48 @@ static void mcast_example_task(void *pvParameters)
                     //memcpy(&device_state.lastTime1, recvbuf+20, 4);
                     device_state.lastTime1 = recvbuf[23] + (recvbuf[22] << 8) + (recvbuf[21] << 16) + (recvbuf[20] << 24);
                     ESP_LOGI(TAG, "state:%d  progess:%f lastTime:%d \n", device_state.state, device_state.progess1, device_state.lastTime1);
-
-                    char lasttime[32];
-                    sprintf(lasttime, "t0.txt=\"%02d:%02d\"", device_state.lastTime1 / 60, device_state.lastTime1 % 60);
-                    sendData(TAG, lasttime);
-                    sendData(TAG, END);
-
-                    char progess[32];
-                    sprintf(progess, "j0.val=%d", (int)(100 - device_state.progess1 * 100));
-                    sendData(TAG, progess);
-                    sendData(TAG, END);
+                    if(oldProgess!=device_state.progess1)
+                    {
+                        char progess[32];
+                        sprintf(progess, "j0.val=%d", (int)(100 - device_state.progess1 * 100));
+                        sendData(TAG, progess);
+                        sendData(TAG, END);
+                        oldProgess=device_state.progess1;
+                    }
+                    if (oldLastTime!=device_state.lastTime1)
+                    {
+                        char lasttime[32];
+                        sprintf(lasttime, "t0.txt=\"%02d:%02d\"", device_state.lastTime1 / 60, device_state.lastTime1 % 60);
+                        sendData(TAG, lasttime);
+                        sendData(TAG, END);
+                        oldLastTime=device_state.lastTime1;
+                    }
+                    if ((device_state.state & 1) == 0)
+                    {
+                        /* code */
+                    }
+                    
+                     
                     //ESP_LOGI(TAG, "state:%d\n", device_state.state&(1>>0));
-                    if ((device_state.state & (1 >> 0)) == 1)
+                    if ((device_state.state & 1) == 1&&btn_state==0&&btn_flag2==0)
                     {
                         sendData(TAG, "click bt0,1");
                         sendData(TAG, END);
+                        btn_flag=1;
+                        btn_state=1;
                     }
-                    else if ((device_state.state & (1 >> 0)) == 0)
+                    else if ((device_state.state & 1) == 0&&btn_state==1&&btn_flag2==0)
                     {
-                        sendData(TAG, "click bt0,0");
+                        sendData(TAG, "click bt0,1");
                         sendData(TAG, END);
+                        btn_state=0;
+                        btn_flag=1;
                     }
+                    if (btn_flag2==1)
+                    {
+                        btn_flag2=0;
+                    }
+                    
                     
                     //mcast_send_data(send_test);
                 }

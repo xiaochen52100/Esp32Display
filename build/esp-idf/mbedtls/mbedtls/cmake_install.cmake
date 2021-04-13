@@ -1,4 +1,4 @@
-# Install script for directory: D:/esp-idf/components/mbedtls/mbedtls
+# Install script for directory: E:/esp-idf/components/mbedtls/mbedtls
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -34,8 +34,8 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for each subdirectory.
-  include("D:/esp-demo/udp_multicast/build/esp-idf/mbedtls/mbedtls/library/cmake_install.cmake")
-  include("D:/esp-demo/udp_multicast/build/esp-idf/mbedtls/mbedtls/include/cmake_install.cmake")
+  include("E:/personal/qixiaochen/esp32/Esp32Display/build/esp-idf/mbedtls/mbedtls/library/cmake_install.cmake")
+  include("E:/personal/qixiaochen/esp32/Esp32Display/build/esp-idf/mbedtls/mbedtls/include/cmake_install.cmake")
 
 endif()
 
